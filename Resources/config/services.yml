@@ -1,0 +1,13 @@
+services:
+
+    ms.cache.redis_client:
+        class: \Redis
+        calls: [ connect, ['127.0.0.1'] ]
+
+    ms.cache.predis_client:
+        class: PredisClient
+        arguments: [ {host: '127.0.0.1'} ]
+
+    ms.cache:
+        class: MS\CacheBundle\RedisCache
+        arguments: [ "@ms.redis_client" ]
