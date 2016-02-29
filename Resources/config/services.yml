@@ -1,11 +1,12 @@
 services:
 
     ms.cache.redis_client:
-        class: \Redis
-        calls: [ connect, ['127.0.0.1'] ]
+        class: Redis
+        calls:
+            - [ connect, ['127.0.0.1'] ]
 
     ms.cache.predis_client:
-        class: PredisClient
+        class: Predis\Client
         arguments: [ {host: '127.0.0.1'} ]
 
     ms.cache:

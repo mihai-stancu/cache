@@ -12,11 +12,6 @@ namespace MS\CacheBundle;
 interface Cache
 {
     /**
-     * @return object
-     */
-    public function getClient();
-
-    /**
      * @param string $key
      *
      * @return bool
@@ -59,7 +54,7 @@ interface Cache
      *
      * @return bool
      */
-    public function add($key, $value, array $tags = array(), $ttl = null);
+    public function add($key, $value, $ttl = null, array $tags = array());
 
     /**
      * @param mixed[]        $values
@@ -68,7 +63,7 @@ interface Cache
      *
      * @return bool
      */
-    public function addMultiple($values, array $tags = array(), $ttl = null);
+    public function addMultiple($values, $ttl = null, array $tags = array());
 
     /**
      * @param string         $key
@@ -78,7 +73,7 @@ interface Cache
      *
      * @return bool
      */
-    public function save($key, $value, array $tags = array(), $ttl = null);
+    public function save($key, $value, $ttl = null, array $tags = array());
 
     /**
      * @param array|mixed[]  $values
@@ -87,7 +82,26 @@ interface Cache
      *
      * @return bool
      */
-    public function saveMultiple($values, array $tags = array(), $ttl = null);
+    public function saveMultiple($values, $ttl = null, array $tags = array());
+
+    /**
+     * @param string         $key
+     * @param mixed          $value
+     * @param array|string[] $tags
+     * @param int            $ttl
+     *
+     * @return bool
+     */
+    public function replace($key, $value, $ttl = null, array $tags = array());
+
+    /**
+     * @param array|mixed[]  $values
+     * @param array|string[] $tags
+     * @param int            $ttl
+     *
+     * @return bool
+     */
+    public function replaceMultiple($values, $ttl = null, array $tags = array());
 
     /**
      * @param string $key
@@ -109,4 +123,35 @@ interface Cache
      * @return bool
      */
     public function deleteByTags(array $tags = array());
+
+    /**
+     * @param array|string[] $keys
+     * @param array|string[] $tags
+     *
+     * @return bool
+     */
+    public function tag($keys, array $tags = array());
+
+    /**
+     * @param array|string[] $keys
+     *
+     * @return bool
+     */
+    public function untag($keys);
+
+    /**
+     * @param string $key
+     * @param int    $ttl
+     * @param bool   $blocking
+     *
+     * @return bool
+     */
+    public function lock($key, $ttl = null, $blocking = false);
+
+    /**
+     * @param string $key
+     *
+     * @return bool
+     */
+    public function unlock($key);
 }
