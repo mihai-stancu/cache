@@ -9,8 +9,20 @@
 
 namespace MS\CacheBundle;
 
-interface Cache
+use Doctrine\Common\Cache\Cache as DoctrineCache;
+
+interface Cache extends DoctrineCache
 {
+    /**
+     * @return string
+     */
+    public function getNamespace();
+
+    /**
+     * @param string $namespace
+     */
+    public function setNamespace($namespace);
+
     /**
      * @param string $key
      *
@@ -138,6 +150,13 @@ interface Cache
      * @return bool
      */
     public function untag($keys);
+
+    /**
+     * @param string $key
+     *
+     * @return bool
+     */
+    public function isLocked($key);
 
     /**
      * @param string $key

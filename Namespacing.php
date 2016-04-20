@@ -85,24 +85,24 @@ trait Namespacing
         $output = array();
         foreach ($input as $key => $value) {
             switch (true) {
-                case (is_int($key) and (is_null($value) or is_scalar($value))):
+                case is_int($key) and (is_null($value) or is_scalar($value)):
                     $prefix = ($base ? $base.':' : '');
                     $value = is_string($value) ? $value : var_export($value, true);
                     $output[] = $prefix.$value;
                     break;
 
-                case (is_int($key) and (is_array($value) or is_object($value))):
+                case is_int($key) and (is_array($value) or is_object($value)):
                     $prefix = ($base ? $base : '');
                     $output = array_merge($output, $this->flattenTags((array) $value, $prefix));
                     break;
 
-                case (is_string($key) and (is_null($value) or is_scalar($value))):
+                case is_string($key) and (is_null($value) or is_scalar($value)):
                     $prefix = ($base ? $base.'.'.$key.':' : $key.':');
                     $value = is_string($value) ? $value : var_export($value, true);
                     $output[] = $prefix.$value;
                     break;
 
-                case (is_string($key) and (is_array($value) or is_object($value))):
+                case is_string($key) and (is_array($value) or is_object($value)):
                     $prefix = ($base ? $base.'.'.$key : $key);
                     $output = array_merge($output, $this->flattenTags((array) $value, $prefix));
                     break;

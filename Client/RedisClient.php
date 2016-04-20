@@ -7,21 +7,26 @@
  * code in the LICENSE.md file.
  */
 
-namespace MS\CacheBundle;
+namespace MS\CacheBundle\Client;
 
-use Doctrine\Common\Cache\Cache as DoctrineCache;
+use MS\CacheBundle\Accessible\ArrayAccessible;
+use MS\CacheBundle\Accessible\PropertyAccessible;
+use MS\CacheBundle\Cache;
+use MS\CacheBundle\Namespacing;
+use MS\CacheBundle\Serializer;
+use Predis\Client as Predis;
 
-class MemcachedCache implements Cache, DoctrineCache, \ArrayAccess
+class RedisClient implements Cache, \ArrayAccess
 {
-    use Accessible\ArrayAccessible;
-    use Accessible\PropertyAccessible;
+    use ArrayAccessible;
+    use PropertyAccessible;
 
     use Namespacing;
     use Serializer;
 
     /**
-     * @param \Memcached $client
-     * @param array      $namespacing
+     * @param \Redis|Predis $client
+     * @param array         $namespacing
      */
     public function __construct($client, array $namespacing = array())
     {
@@ -32,15 +37,11 @@ class MemcachedCache implements Cache, DoctrineCache, \ArrayAccess
         }
     }
 
-    public function getStats()
-    {
-    }
-
-    /** @var  \Memcached */
+    /** @var  \Redis|Predis */
     protected $client;
 
     /**
-     * @return \Memcached
+     * @return \Redis|Predis
      */
     public function getClient()
     {
@@ -49,14 +50,17 @@ class MemcachedCache implements Cache, DoctrineCache, \ArrayAccess
 
     public function beginTransaction()
     {
+        $this->getClient()->multi();
     }
 
     public function commit()
     {
+        return $this->getClient()->exec();
     }
 
     public function rollback()
     {
+        return $this->getClient()->discard();
     }
 
     /**
@@ -68,7 +72,7 @@ class MemcachedCache implements Cache, DoctrineCache, \ArrayAccess
     {
         $nsKey = $this->applyNamespace($key);
 
-        return $this->getClient()->append($nsKey, null);
+        return $this->getClient()->exists($nsKey);
     }
 
     /**
@@ -80,13 +84,7 @@ class MemcachedCache implements Cache, DoctrineCache, \ArrayAccess
     {
         $nsKeys = $this->applyNamespace($keys);
 
-        foreach ($nsKeys as $nsKey) {
-            if (!$this->getClient()->append($nsKey, null)) {
-                return false;
-            }
-        }
-
-        return true;
+        return count($keys) === $this->getClient()->exists($nsKeys);
     }
 
     /**
@@ -111,7 +109,7 @@ class MemcachedCache implements Cache, DoctrineCache, \ArrayAccess
     public function fetchMultiple(array $keys = array())
     {
         $nsKeys = $this->applyNamespace($keys);
-        $serializedValues = $this->getClient()->getMulti($nsKeys);
+        $serializedValues = $this->getClient()->mget($nsKeys);
         $values = array_map(array($this, 'deserialize'), $serializedValues);
         $values = array_combine($keys, $values);
 
@@ -125,7 +123,12 @@ class MemcachedCache implements Cache, DoctrineCache, \ArrayAccess
      */
     public function fetchByTags(array $tags = array())
     {
-        throw new \Exception();
+        $tags = $this->flattenTags($tags);
+        $nsTags = $this->applyNamespace($tags, 'tag');
+        $keys = call_user_func_array(array($this->getClient(), 'sInter'), $nsTags);
+        $values = empty($keys) ? array() : $this->fetchMultiple($keys);
+
+        return $values;
     }
 
     /**
@@ -142,8 +145,8 @@ class MemcachedCache implements Cache, DoctrineCache, \ArrayAccess
         $serializedValue = $this->serialize($value);
 
         $this->beginTransaction();
-        $ttl = $ttl ? intval($ttl) : null;
-        $this->getClient()->add($nsKey, $serializedValue, $ttl);
+        $options = array('nx', 'px' => $ttl ? intval($ttl * 1000) : null);
+        $this->getClient()->set($nsKey, $serializedValue, $options);
         $this->tag($key, $tags);
 
         return $this->commit();
@@ -165,7 +168,7 @@ class MemcachedCache implements Cache, DoctrineCache, \ArrayAccess
         $nsValues = array_combine($nsKeys, $serializedValues);
 
         $this->beginTransaction();
-        $this->getClient()->setMulti($nsValues);
+        $this->getClient()->msetnx($nsValues);
         $this->tag($keys, $tags);
 
         return $this->commit();
@@ -185,8 +188,8 @@ class MemcachedCache implements Cache, DoctrineCache, \ArrayAccess
         $serializedValue = $this->serialize($value);
 
         $this->beginTransaction();
-        $ttl = $ttl ? intval($ttl) : null;
-        $this->getClient()->set($nsKey, $serializedValue, $ttl);
+        $options = array('px' => $ttl ? intval($ttl * 1000) : null);
+        $this->getClient()->set($nsKey, $serializedValue, $options);
         $this->tag($key, $tags);
 
         return $this->commit();
@@ -208,7 +211,7 @@ class MemcachedCache implements Cache, DoctrineCache, \ArrayAccess
         $nsValues = array_combine($nsKeys, $serializedValues);
 
         $this->beginTransaction();
-        $this->getClient()->setMulti($nsValues);
+        $this->getClient()->mset($nsValues);
         $this->tag($keys, $tags);
 
         return $this->commit();
@@ -228,8 +231,8 @@ class MemcachedCache implements Cache, DoctrineCache, \ArrayAccess
         $serializedValue = $this->serialize($value);
 
         $this->beginTransaction();
-        $ttl = $ttl ? intval($ttl) : null;
-        $this->getClient()->replace($nsKey, $serializedValue, $ttl);
+        $options = array('xx', 'px' => $ttl ? intval($ttl * 1000) : null);
+        $this->getClient()->set($nsKey, $serializedValue, $options);
         $this->tag($key, $tags);
 
         return $this->commit();
@@ -255,7 +258,7 @@ class MemcachedCache implements Cache, DoctrineCache, \ArrayAccess
         }
 
         $this->beginTransaction();
-        $this->getClient()->setMulti($nsValues);
+        $this->getClient()->mset($nsValues);
         $this->tag($keys, $tags);
 
         return $this->commit();
@@ -272,7 +275,7 @@ class MemcachedCache implements Cache, DoctrineCache, \ArrayAccess
 
         $nsKey = $this->applyNamespace($key);
 
-        return $this->getClient()->delete($nsKey);
+        return 1 === $this->getClient()->del($nsKey);
     }
 
     /**
@@ -286,7 +289,7 @@ class MemcachedCache implements Cache, DoctrineCache, \ArrayAccess
 
         $nsKeys = $this->applyNamespace($keys);
 
-        return $this->getClient()->deleteMulti($nsKeys);
+        return count($keys) === $this->getClient()->del($nsKeys);
     }
 
     /**
@@ -296,7 +299,11 @@ class MemcachedCache implements Cache, DoctrineCache, \ArrayAccess
      */
     public function deleteByTags(array $tags = array())
     {
-        throw new \Exception();
+        $tags = $this->flattenTags($tags);
+        $nsTags = $this->applyNamespace($tags, 'tag');
+        $keys = call_user_func_array(array($this->getClient(), 'sInter'), $nsTags);
+
+        return empty($keys) ? true : $this->deleteMultiple($keys);
     }
 
     /**
@@ -319,7 +326,7 @@ class MemcachedCache implements Cache, DoctrineCache, \ArrayAccess
         $serializedTags = $this->serialize($tags);
         $nsTagsKeys = $this->applyNamespace($keys, 'tags');
         $values = array_combine($nsTagsKeys, array_fill(0, count($nsTagsKeys), $serializedTags));
-        $this->getClient()->setMulti($values);
+        $this->getClient()->mset($values);
 
         $nsTags = $this->applyNamespace($tags, 'tag');
         foreach ($nsTags as $nsTag) {
@@ -339,7 +346,7 @@ class MemcachedCache implements Cache, DoctrineCache, \ArrayAccess
         }
 
         $nsTagsKeys = $this->applyNamespace($keys, 'tags');
-        $serializedTagsList = $this->getClient()->getMulti($nsTagsKeys);
+        $serializedTagsList = $this->getClient()->mget($nsTagsKeys);
         $tagsList = array_map(array($this, 'deserialize'), $serializedTagsList);
         $tags = call_user_func_array('array_merge', $tagsList);
         $tags = array_unique($tags);
@@ -350,7 +357,19 @@ class MemcachedCache implements Cache, DoctrineCache, \ArrayAccess
             call_user_func_array(array($this->getClient(), 'sRem'), array_merge(array($nsTag), $keys));
         }
 
-        return $this->getClient()->deleteMulti($nsTagsKeys);
+        return $this->getClient()->del($nsTagsKeys);
+    }
+
+    /**
+     * @param string $key
+     *
+     * @return bool
+     */
+    public function isLocked($key)
+    {
+        $nsKey = $this->applyNamespace($key, 'lock');
+
+        return (bool) $this->getClient()->get($nsKey);
     }
 
     /**
@@ -362,13 +381,14 @@ class MemcachedCache implements Cache, DoctrineCache, \ArrayAccess
      */
     public function lock($key, $ttl = null, $blocking = false)
     {
-        $ttl = $ttl ? intval($ttl) : 1;
+        $ttl = is_numeric($ttl) ? $ttl : 1;
 
         $nsKey = $this->applyNamespace($key, 'lock');
 
         $value = openssl_random_pseudo_bytes(32);
+        $options = array('nx', 'px' => $ttl ? intval($ttl * 1000) : null);
 
-        while (!($result = $this->getClient()->add($nsKey, $value, $ttl)) and $blocking) {
+        while (!($result = $this->getClient()->set($nsKey, $value, $options)) and $blocking) {
             usleep(5 * 1000);
         }
 
@@ -384,6 +404,10 @@ class MemcachedCache implements Cache, DoctrineCache, \ArrayAccess
     {
         $nsKey = $this->applyNamespace($key, 'lock');
 
-        return (bool) $this->getClient()->delete($nsKey);
+        return (bool) $this->getClient()->del($nsKey);
+    }
+
+    public function getStats()
+    {
     }
 }
