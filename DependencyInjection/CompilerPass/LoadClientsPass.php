@@ -33,6 +33,8 @@ class LoadClientsPass implements CompilerPassInterface
             $outer = new Definition();
             $outer->setClass($outerClass);
             $outer->setArguments([new Reference($id.'.inner')]);
+            $namespace = isset($tags[0]['namespace']) ? $tags[0]['namespace'] : $id;
+            $outer->addMethodCall('setNamespace', [$namespace]);
             $container->setDefinition($id, $outer);
         }
     }
