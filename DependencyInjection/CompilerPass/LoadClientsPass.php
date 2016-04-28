@@ -33,6 +33,7 @@ class LoadClientsPass implements CompilerPassInterface
             $outer = new Definition();
             $outer->setClass($outerClass);
             $outer->setArguments([new Reference($id.'.inner')]);
+            $outer->addMethodCall('setNamespace', [isset($tags[0]['namespace']) ? $tags[0]['namespace'] : $id]);
             $container->setDefinition($id, $outer);
         }
     }
@@ -45,8 +46,7 @@ class LoadClientsPass implements CompilerPassInterface
     protected function getOuterClass($class)
     {
         switch (true) {
-            case class_exists('Redis') and is_subclass_of($class, 'Redis', true):
-            case class_exists('Predis\Client') and ($class === 'Predis\Client' or is_subclass_of($class, 'Predis\Client', true)):
+            case class_exists('Redis') and ($class === 'Redis' or is_subclass_of($class, 'Redis', true)):
                 return RedisClient::class;
 
             case class_exists('Memcached') and is_subclass_of($class, 'Memcached', true):
