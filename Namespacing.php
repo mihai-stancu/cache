@@ -80,10 +80,10 @@ trait Namespacing
      *
      * @return array
      */
-    public function flattenTags(array $input = array(), $base = '')
+    public function flattenTags($input = array(), $base = '')
     {
         $output = array();
-        foreach ($input as $key => $value) {
+        foreach ((array) $input as $key => $value) {
             switch (true) {
                 case is_int($key) and (is_null($value) or is_scalar($value)):
                     $prefix = ($base ? $base.':' : '');

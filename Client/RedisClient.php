@@ -189,6 +189,7 @@ class RedisClient implements Cache, \ArrayAccess
 
         $this->beginTransaction();
         $options = array('px' => $ttl ? intval($ttl * 1000) : null);
+
         $this->getClient()->set($nsKey, $serializedValue, $options);
         $this->tag($key, $tags);
 
