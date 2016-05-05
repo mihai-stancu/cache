@@ -50,7 +50,7 @@ class RedisClient implements Cache, \ArrayAccess
 
     public function beginTransaction()
     {
-        $this->getClient()->multi();
+        $this->getClient()->multi(\Redis::PIPELINE);
     }
 
     public function commit()
@@ -128,7 +128,7 @@ class RedisClient implements Cache, \ArrayAccess
         $keys = call_user_func_array(array($this->getClient(), 'sInter'), $nsTags);
         $values = empty($keys) ? array() : $this->fetchMultiple($keys);
 
-        return $values;
+        return (array) $values;
     }
 
     /**
