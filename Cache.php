@@ -24,6 +24,21 @@ interface Cache extends DoctrineCache
     public function setNamespace($namespace);
 
     /**
+     * @return void
+     */
+    public function beginTransaction();
+
+    /**
+     * @return mixed[]
+     */
+    public function commit();
+
+    /**
+     * @return void
+     */
+    public function rollback();
+
+    /**
      * @param string $key
      *
      * @return bool
