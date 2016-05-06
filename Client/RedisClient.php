@@ -146,6 +146,7 @@ class RedisClient implements Cache, \ArrayAccess
 
         $this->beginTransaction();
         $options = array('nx', 'px' => $ttl ? intval($ttl * 1000) : null);
+        $options = array_filter($options);
         $this->getClient()->set($nsKey, $serializedValue, $options);
         $this->tag($key, $tags);
 
@@ -189,6 +190,7 @@ class RedisClient implements Cache, \ArrayAccess
 
         $this->beginTransaction();
         $options = array('px' => $ttl ? intval($ttl * 1000) : null);
+        $options = array_filter($options);
 
         $this->getClient()->set($nsKey, $serializedValue, $options);
         $this->tag($key, $tags);
@@ -233,6 +235,7 @@ class RedisClient implements Cache, \ArrayAccess
 
         $this->beginTransaction();
         $options = array('xx', 'px' => $ttl ? intval($ttl * 1000) : null);
+        $options = array_filter($options);
         $this->getClient()->set($nsKey, $serializedValue, $options);
         $this->tag($key, $tags);
 
@@ -388,6 +391,7 @@ class RedisClient implements Cache, \ArrayAccess
 
         $value = openssl_random_pseudo_bytes(32);
         $options = array('nx', 'px' => $ttl ? intval($ttl * 1000) : null);
+        $options = array_filter($options);
 
         while (!($result = $this->getClient()->set($nsKey, $value, $options)) and $blocking) {
             usleep(5 * 1000);
