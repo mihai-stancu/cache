@@ -21,10 +21,10 @@ trait Serializer
     public function serialize($value, $format = null, array $context = array())
     {
         switch ($format) {
+            default:
             case 'json':
                 return json_encode($value);
 
-            default:
             case 'serialize':
                 return serialize($value);
         }
@@ -41,10 +41,10 @@ trait Serializer
     public function deserialize($value, $type = null, $format = null, array $context = array())
     {
         switch ($format) {
+            default:
             case 'json':
                 return json_decode($value, true);
 
-            default:
             case 'serialize':
                 return unserialize($value);
         }
