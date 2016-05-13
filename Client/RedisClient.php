@@ -118,14 +118,15 @@ class RedisClient implements Cache, \ArrayAccess
 
     /**
      * @param array|string[] $tags
+     * @param bool           $intersect
      *
      * @return array|mixed[]
      */
-    public function fetchByTags(array $tags = array())
+    public function fetchByTags(array $tags = array(), $intersect = true)
     {
         $tags = $this->flattenTags($tags);
         $nsTags = $this->applyNamespace($tags, 'tag');
-        $keys = call_user_func_array(array($this->getClient(), 'sInter'), $nsTags);
+        $keys = call_user_func_array(array($this->getClient(), $intersect ? 'sInter' : 'sUnion'), $nsTags);
         $values = empty($keys) ? array() : $this->fetchMultiple($keys);
 
         return (array) $values;
@@ -298,14 +299,15 @@ class RedisClient implements Cache, \ArrayAccess
 
     /**
      * @param array|string[] $tags
+     * @param bool           $intersect
      *
      * @return bool
      */
-    public function deleteByTags(array $tags = array())
+    public function deleteByTags(array $tags = array(), $intersect = true)
     {
         $tags = $this->flattenTags($tags);
         $nsTags = $this->applyNamespace($tags, 'tag');
-        $keys = call_user_func_array(array($this->getClient(), 'sInter'), $nsTags);
+        $keys = call_user_func_array(array($this->getClient(), $intersect ? 'sInter' : 'sUnion'), $nsTags);
 
         return empty($keys) ? true : $this->deleteMultiple($keys);
     }

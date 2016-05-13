@@ -68,10 +68,11 @@ interface Cache extends DoctrineCache
 
     /**
      * @param array|string[] $tags
+     * @param bool           $intersect
      *
      * @return array|mixed[]
      */
-    public function fetchByTags(array $tags = array());
+    public function fetchByTags(array $tags = array(), $intersect = true);
 
     /**
      * @param string         $key
@@ -146,10 +147,11 @@ interface Cache extends DoctrineCache
 
     /**
      * @param array|string[] $tags
+     * @param bool           $intersect
      *
      * @return bool
      */
-    public function deleteByTags(array $tags = array());
+    public function deleteByTags(array $tags = array(), $intersect = true);
 
     /**
      * @param array|string[] $keys
