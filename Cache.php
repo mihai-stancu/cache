@@ -13,6 +13,12 @@ use Doctrine\Common\Cache\Cache as DoctrineCache;
 
 interface Cache extends DoctrineCache
 {
+    public function beginTransaction();
+
+    public function commit();
+
+    public function rollback();
+
     /**
      * @return string
      */
@@ -22,21 +28,6 @@ interface Cache extends DoctrineCache
      * @param string $namespace
      */
     public function setNamespace($namespace);
-
-    /**
-     * @return void
-     */
-    public function beginTransaction();
-
-    /**
-     * @return mixed[]
-     */
-    public function commit();
-
-    /**
-     * @return void
-     */
-    public function rollback();
 
     /**
      * @param string $key
@@ -169,25 +160,28 @@ interface Cache extends DoctrineCache
     public function untag($keys);
 
     /**
-     * @param string $key
+     * @param string $name
+     * @param string $secret
      *
      * @return bool
      */
-    public function isLocked($key);
+    public function isLocked($name, $secret = null);
 
     /**
-     * @param string $key
+     * @param string $name
+     * @param string $secret
      * @param int    $ttl
      * @param bool   $blocking
      *
      * @return bool
      */
-    public function lock($key, $ttl = null, $blocking = false);
+    public function lock($name, $secret = null, $ttl = null, $blocking = false);
 
     /**
-     * @param string $key
+     * @param string $name
+     * @param string $secret
      *
      * @return bool
      */
-    public function unlock($key);
+    public function unlock($name, $secret = null);
 }
