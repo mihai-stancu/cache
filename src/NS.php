@@ -7,11 +7,17 @@
  * code in the LICENSE.md file.
  */
 
-namespace MS\CacheBundle;
+namespace MS\Cache;
 
-trait Namespacing
+class NS
 {
-    protected $namespacing = array(
+    /** @var  string */
+    protected $value;
+
+    /**
+     * @var array
+     */
+    protected $config = array(
         'format' => '%1$s.%2$s/%3$s',
 
         'roles' => array(
@@ -22,39 +28,28 @@ trait Namespacing
         ),
     );
 
-    protected $namespace;
-
     /**
-     * @return mixed
+     * @param array $config
      */
-    public function getNamespace()
+    public function __construct(array $config = [])
     {
-        return $this->namespace;
+        $this->config = $config;
     }
 
     /**
-     * @param mixed $namespace
+     * @return string
      */
-    public function setNamespace($namespace)
+    public function get()
     {
-        $this->namespace = $namespace;
+        return $this->value;
     }
 
     /**
-     * @param string|string[] $key
-     * @param string          $role
-     *
-     * @return string|string[]
+     * @param string $value
      */
-    public function applyNamespace($key, $role = 'value')
+    public function set($value)
     {
-        $role = $this->namespacing['roles'][$role];
-
-        if (is_string($key)) {
-            return vsprintf($this->namespacing['format'], array($this->namespace, $role, $key));
-        }
-
-        return array_map(array($this, 'applyNamespace'), $key, array_fill(0, count($key), $role));
+        $this->value = $value;
     }
 
     /**
@@ -63,15 +58,32 @@ trait Namespacing
      *
      * @return string|string[]
      */
-    public function removeNamespace($key, $role = null)
+    public function apply($key, $role = 'value')
     {
-        $role = $this->namespacing['roles'][$role];
+        $role = $this->config['roles'][$role];
 
         if (is_string($key)) {
-            return substr($key, strlen($this->namespace) + strlen($role) + 2);
+            return vsprintf($this->config['format'], array($this->value, $role, $key));
         }
 
-        return array_map(array($this, 'removeNamespace'), $key, array_fill(0, count($key), $role));
+        return array_map(array($this, 'apply'), $key, array_fill(0, count($key), $role));
+    }
+
+    /**
+     * @param string|string[] $key
+     * @param string          $role
+     *
+     * @return string|string[]
+     */
+    public function remove($key, $role = null)
+    {
+        $role = $this->config['roles'][$role];
+
+        if (is_string($key)) {
+            return substr($key, strlen($this->value) + strlen($role) + 2);
+        }
+
+        return array_map(array($this, 'remove'), $key, array_fill(0, count($key), $role));
     }
 
     /**
@@ -80,7 +92,7 @@ trait Namespacing
      *
      * @return array
      */
-    public function flattenTags($input = array(), $base = '')
+    public function flatten($input = array(), $base = '')
     {
         $output = array();
         foreach ((array) $input as $key => $value) {
@@ -93,7 +105,7 @@ trait Namespacing
 
                 case is_int($key) and (is_array($value) or is_object($value)):
                     $prefix = ($base ? $base : '');
-                    $output = array_merge($output, $this->flattenTags((array) $value, $prefix));
+                    $output = array_merge($output, $this->flatten((array) $value, $prefix));
                     break;
 
                 case is_string($key) and (is_null($value) or is_scalar($value)):
@@ -104,7 +116,7 @@ trait Namespacing
 
                 case is_string($key) and (is_array($value) or is_object($value)):
                     $prefix = ($base ? $base.'.'.$key : $key);
-                    $output = array_merge($output, $this->flattenTags((array) $value, $prefix));
+                    $output = array_merge($output, $this->flatten((array) $value, $prefix));
                     break;
             }
         }

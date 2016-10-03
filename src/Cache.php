@@ -7,27 +7,15 @@
  * code in the LICENSE.md file.
  */
 
-namespace MS\CacheBundle;
+namespace MS\Cache;
 
-use Doctrine\Common\Cache\Cache as DoctrineCache;
-
-interface Cache extends DoctrineCache
+interface Cache
 {
     public function beginTransaction();
 
     public function commit();
 
     public function rollback();
-
-    /**
-     * @return string
-     */
-    public function getNamespace();
-
-    /**
-     * @param string $namespace
-     */
-    public function setNamespace($namespace);
 
     /**
      * @param string $key

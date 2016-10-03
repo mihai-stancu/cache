@@ -7,39 +7,31 @@
  * code in the LICENSE.md file.
  */
 
-namespace MS\CacheBundle\Client;
+namespace MS\Cache\Client;
 
-use MS\CacheBundle\Accessible\ArrayAccessible;
-use MS\CacheBundle\Accessible\PropertyAccessible;
-use MS\CacheBundle\Cache;
-use MS\CacheBundle\Namespacing;
-use MS\CacheBundle\Serializer;
+use MS\Cache\Cache;
+use MS\Cache\NS;
 
-class RedisClient implements Cache, \ArrayAccess
+class RedisClient implements Cache
 {
-    use ArrayAccessible;
-    use PropertyAccessible;
-
-    use Namespacing;
-    use Serializer;
-
     /** @var  \Redis */
     protected $client;
+
+    /** @var NS  */
+    protected $ns;
 
     /** @var array|string[] */
     protected $locks = [];
 
     /**
-     * @param \Redis $client
-     * @param array  $namespacing
+     * @param \Redis    $client
+     * @param NS $ns
      */
-    public function __construct($client, array $namespacing = array())
+    public function __construct($client, NS $ns = null)
     {
         $this->client = $client;
 
-        if (!empty($namespacing)) {
-            $this->namespacing = $namespacing;
-        }
+        $this->ns = $ns ?: new NS();
     }
 
     public function beginTransaction()
@@ -64,7 +56,7 @@ class RedisClient implements Cache, \ArrayAccess
      */
     public function contains($key)
     {
-        $nsKey = $this->applyNamespace($key);
+        $nsKey = $this->ns->apply($key);
 
         return $this->client->exists($nsKey);
     }
@@ -76,7 +68,7 @@ class RedisClient implements Cache, \ArrayAccess
      */
     public function containsMultiple($keys)
     {
-        $nsKeys = $this->applyNamespace($keys);
+        $nsKeys = $this->ns->apply($keys);
 
         return count($keys) === $this->client->exists($nsKeys);
     }
@@ -88,7 +80,7 @@ class RedisClient implements Cache, \ArrayAccess
      */
     public function fetch($key)
     {
-        $nsKey = $this->applyNamespace($key);
+        $nsKey = $this->ns->apply($key);
         $serializedValue = $this->client->get($nsKey);
         $value = $this->deserialize($serializedValue);
 
@@ -102,7 +94,7 @@ class RedisClient implements Cache, \ArrayAccess
      */
     public function fetchMultiple(array $keys = array())
     {
-        $nsKeys = $this->applyNamespace($keys);
+        $nsKeys = $this->ns->apply($keys);
         $serializedValues = $this->client->mget($nsKeys);
         $values = array_map(array($this, 'deserialize'), $serializedValues);
         $values = array_combine($keys, $values);
@@ -119,7 +111,7 @@ class RedisClient implements Cache, \ArrayAccess
     public function fetchByTags(array $tags = array(), $intersect = true)
     {
         $tags = $this->flattenTags($tags);
-        $nsTags = $this->applyNamespace($tags, 'tag');
+        $nsTags = $this->ns->apply($tags, 'tag');
         $keys = call_user_func_array(array($this->client, $intersect ? 'sInter' : 'sUnion'), $nsTags);
         $values = empty($keys) ? array() : $this->fetchMultiple($keys);
 
@@ -136,7 +128,7 @@ class RedisClient implements Cache, \ArrayAccess
      */
     public function add($key, $value, $ttl = null, array $tags = array())
     {
-        $nsKey = $this->applyNamespace($key);
+        $nsKey = $this->ns->apply($key);
         $serializedValue = $this->serialize($value);
 
         $this->beginTransaction();
@@ -158,7 +150,7 @@ class RedisClient implements Cache, \ArrayAccess
     public function addMultiple($values, $ttl = null, array $tags = array())
     {
         $keys = array_keys($values);
-        $nsKeys = $this->applyNamespace($keys);
+        $nsKeys = $this->ns->apply($keys);
 
         $serializedValues = array_map(array($this, 'serialize'), $values);
         $nsValues = array_combine($nsKeys, $serializedValues);
@@ -180,7 +172,7 @@ class RedisClient implements Cache, \ArrayAccess
      */
     public function save($key, $value, $ttl = null, array $tags = array())
     {
-        $nsKey = $this->applyNamespace($key);
+        $nsKey = $this->ns->apply($key);
         $serializedValue = $this->serialize($value);
 
         $this->beginTransaction();
@@ -203,7 +195,7 @@ class RedisClient implements Cache, \ArrayAccess
     public function saveMultiple($values, $ttl = null, array $tags = array())
     {
         $keys = array_keys($values);
-        $nsKeys = $this->applyNamespace($keys);
+        $nsKeys = $this->ns->apply($keys);
 
         $serializedValues = array_map(array($this, 'serialize'), $values);
         $nsValues = array_combine($nsKeys, $serializedValues);
@@ -225,7 +217,7 @@ class RedisClient implements Cache, \ArrayAccess
      */
     public function replace($key, $value, $ttl = null, array $tags = array())
     {
-        $nsKey = $this->applyNamespace($key);
+        $nsKey = $this->ns->apply($key);
         $serializedValue = $this->serialize($value);
 
         $this->beginTransaction();
@@ -247,7 +239,7 @@ class RedisClient implements Cache, \ArrayAccess
     public function replaceMultiple($values, $ttl = null, array $tags = array())
     {
         $keys = array_keys($values);
-        $nsKeys = $this->applyNamespace($keys);
+        $nsKeys = $this->ns->apply($keys);
 
         $serializedValues = array_map(array($this, 'serialize'), $values);
         $nsValues = array_combine($nsKeys, $serializedValues);
@@ -272,7 +264,7 @@ class RedisClient implements Cache, \ArrayAccess
     {
         $this->untag($key);
 
-        $nsKey = $this->applyNamespace($key);
+        $nsKey = $this->ns->apply($key);
 
         return 1 === $this->client->del($nsKey);
     }
@@ -286,7 +278,7 @@ class RedisClient implements Cache, \ArrayAccess
     {
         $this->untag($keys);
 
-        $nsKeys = $this->applyNamespace($keys);
+        $nsKeys = $this->ns->apply($keys);
 
         return count($keys) === $this->client->del($nsKeys);
     }
@@ -299,8 +291,8 @@ class RedisClient implements Cache, \ArrayAccess
      */
     public function deleteByTags(array $tags = array(), $intersect = true)
     {
-        $tags = $this->flattenTags($tags);
-        $nsTags = $this->applyNamespace($tags, 'tag');
+        $tags = $this->ns->flatten($tags);
+        $nsTags = $this->ns->apply($tags, 'tag');
         $keys = call_user_func_array(array($this->client, $intersect ? 'sInter' : 'sUnion'), $nsTags);
 
         return empty($keys) ? true : $this->deleteMultiple($keys);
@@ -322,13 +314,13 @@ class RedisClient implements Cache, \ArrayAccess
             $keys = array($keys);
         }
 
-        $tags = $this->flattenTags($tags);
+        $tags = $this->ns->flatten($tags);
         $serializedTags = $this->serialize($tags);
-        $nsTagsKeys = $this->applyNamespace($keys, 'tags');
+        $nsTagsKeys = $this->ns->apply($keys, 'tags');
         $values = array_combine($nsTagsKeys, array_fill(0, count($nsTagsKeys), $serializedTags));
         $this->client->mset($values);
 
-        $nsTags = $this->applyNamespace($tags, 'tag');
+        $nsTags = $this->ns->apply($tags, 'tag');
         foreach ($nsTags as $nsTag) {
             call_user_func_array(array($this->client, 'sAdd'), array_merge(array($nsTag), $keys));
         }
@@ -345,13 +337,13 @@ class RedisClient implements Cache, \ArrayAccess
             $keys = array($keys);
         }
 
-        $nsTagsKeys = $this->applyNamespace($keys, 'tags');
+        $nsTagsKeys = $this->ns->apply($keys, 'tags');
         $serializedTagsList = $this->client->mget($nsTagsKeys);
         $tagsList = array_map(array($this, 'deserialize'), $serializedTagsList);
         $tags = call_user_func_array('array_merge', $tagsList);
         $tags = array_unique($tags);
 
-        $nsTags = $this->applyNamespace($tags, 'tag');
+        $nsTags = $this->ns->apply($tags, 'tag');
         foreach ($nsTags as $nsTag) {
             $this->client->sRem($nsTag, $keys);
             call_user_func_array(array($this->client, 'sRem'), array_merge(array($nsTag), $keys));
@@ -368,7 +360,7 @@ class RedisClient implements Cache, \ArrayAccess
      */
     public function isLocked($name, $secret = null)
     {
-        $nsName = $this->applyNamespace($name, 'lock');
+        $nsName = $this->ns->apply($name, 'lock');
 
         if ($secret === null and isset($this->locks[$nsName])) {
             $secret = $this->locks[$nsName];
@@ -395,7 +387,7 @@ class RedisClient implements Cache, \ArrayAccess
 
         $ttl = is_numeric($ttl) ? $ttl : 1;
 
-        $nsName = $this->applyNamespace($name, 'lock');
+        $nsName = $this->ns->apply($name, 'lock');
 
         $options = array('nx', 'px' => $ttl ? intval($ttl * 1000) : null);
         $options = array_filter($options);
@@ -419,7 +411,7 @@ class RedisClient implements Cache, \ArrayAccess
      */
     public function unlock($name, $secret = null)
     {
-        $nsName = $this->applyNamespace($name, 'lock');
+        $nsName = $this->ns->apply($name, 'lock');
 
         if (!$this->isLocked($name, $secret)) {
             return false;
@@ -434,7 +426,42 @@ class RedisClient implements Cache, \ArrayAccess
         return true;
     }
 
-    public function getStats()
+    /**
+     * @param mixed  $value
+     * @param string $format
+     * @param array  $context
+     *
+     * @return string
+     */
+    public function serialize($value, $format = null, array $context = array())
     {
+        switch ($format) {
+            default:
+            case 'json':
+                return json_encode($value);
+
+            case 'serialize':
+                return serialize($value);
+        }
+    }
+
+    /**
+     * @param string $value
+     * @param string $type
+     * @param string $format
+     * @param array  $context
+     *
+     * @return mixed
+     */
+    public function deserialize($value, $type = null, $format = null, array $context = array())
+    {
+        switch ($format) {
+            default:
+            case 'json':
+                return json_decode($value, true);
+
+            case 'serialize':
+                return unserialize($value);
+        }
     }
 }

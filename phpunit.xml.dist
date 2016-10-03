@@ -5,17 +5,16 @@
 
     <testsuites>
         <testsuite>
-            <directory>./Tests</directory>
+            <directory>tests</directory>
         </testsuite>
     </testsuites>
 
     <filter>
         <whitelist>
-            <directory>./</directory>
+            <directory>src/</directory>
             <exclude>
-                <directory>./Resources/</directory>
-                <directory>./Tests/</directory>
-                <directory>./vendor/</directory>
+                <directory>tests/</directory>
+                <directory>vendor/</directory>
             </exclude>
         </whitelist>
     </filter>

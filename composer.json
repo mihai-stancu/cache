@@ -1,8 +1,8 @@
 {
-    "name": "mihai-stancu/cache-bundle",
+    "name": "mihai-stancu/cache",
 
     "license": "MIT",
-    "type": "symfony-bundle",
+    "type": "library",
 
     "description": "Cache items with associated tagging information and subsequently fetch or delete items based on tags.",
     "keywords": ["cache", "tagging", "cache invalidation", "cache busting"],
@@ -15,15 +15,10 @@
     ],
 
     "require": {
-        "php": ">=5.4",
-
-        "symfony/dependency-injection": "^2|^3",
-        "symfony/config": "^2|^3",
-        "symfony/http-kernel": "^2|^3"
+        "php": ">=5.4"
     },
     "require-dev": {
     },
-
     "suggest": {
         "ext-redis": "^1",
         "predis/predis": "^1"
@@ -31,7 +26,7 @@
 
     "autoload": {
         "psr-4": {
-          "MS\\CacheBundle\\": ""
+          "MS\\Cache\\": "src/"
         }
     },
     "config": {

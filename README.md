@@ -1,4 +1,4 @@
-MSCacheBundle
+MSCache
 ================================================================================
 
 A Cache system which allows cache items to be associated to tags. When saving a cache item you can also supply its associated tags.
