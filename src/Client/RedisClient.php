@@ -9,7 +9,6 @@
 
 namespace MS\Cache\Client;
 
-use MS\Cache\Cache;
 use MS\Cache\NS;
 
 class RedisClient implements Cache
@@ -129,12 +128,11 @@ class RedisClient implements Cache
     public function add($key, $value, $ttl = null, array $tags = array())
     {
         $nsKey = $this->ns->apply($key);
-        $serializedValue = $this->serialize($value);
 
         $this->beginTransaction();
         $options = array('nx', 'px' => $ttl ? intval($ttl * 1000) : null);
         $options = array_filter($options);
-        $this->client->set($nsKey, $serializedValue, $options);
+        $this->client->set($nsKey, (string) $value, $options);
         $this->tag($key, $tags);
 
         return $this->commit();
@@ -152,8 +150,8 @@ class RedisClient implements Cache
         $keys = array_keys($values);
         $nsKeys = $this->ns->apply($keys);
 
-        $serializedValues = array_map(array($this, 'serialize'), $values);
-        $nsValues = array_combine($nsKeys, $serializedValues);
+        $values = array_map(array($this, 'strval'), $values);
+        $nsValues = array_combine($nsKeys, $values);
 
         $this->beginTransaction();
         $this->client->msetnx($nsValues);
@@ -173,13 +171,12 @@ class RedisClient implements Cache
     public function save($key, $value, $ttl = null, array $tags = array())
     {
         $nsKey = $this->ns->apply($key);
-        $serializedValue = $this->serialize($value);
 
         $this->beginTransaction();
         $options = array('px' => $ttl ? intval($ttl * 1000) : null);
         $options = array_filter($options);
 
-        $this->client->set($nsKey, $serializedValue, $options);
+        $this->client->set($nsKey, $value, $options);
         $this->tag($key, $tags);
 
         return $this->commit();
@@ -197,8 +194,8 @@ class RedisClient implements Cache
         $keys = array_keys($values);
         $nsKeys = $this->ns->apply($keys);
 
-        $serializedValues = array_map(array($this, 'serialize'), $values);
-        $nsValues = array_combine($nsKeys, $serializedValues);
+        $values = array_map(array($this, 'strval'), $values);
+        $nsValues = array_combine($nsKeys, $values);
 
         $this->beginTransaction();
         $this->client->mset($nsValues);
@@ -218,12 +215,11 @@ class RedisClient implements Cache
     public function replace($key, $value, $ttl = null, array $tags = array())
     {
         $nsKey = $this->ns->apply($key);
-        $serializedValue = $this->serialize($value);
 
         $this->beginTransaction();
         $options = array('xx', 'px' => $ttl ? intval($ttl * 1000) : null);
         $options = array_filter($options);
-        $this->client->set($nsKey, $serializedValue, $options);
+        $this->client->set($nsKey, (string) $value, $options);
         $this->tag($key, $tags);
 
         return $this->commit();
@@ -241,8 +237,8 @@ class RedisClient implements Cache
         $keys = array_keys($values);
         $nsKeys = $this->ns->apply($keys);
 
-        $serializedValues = array_map(array($this, 'serialize'), $values);
-        $nsValues = array_combine($nsKeys, $serializedValues);
+        $values = array_map(array($this, 'strval'), $values);
+        $nsValues = array_combine($nsKeys, $values);
 
         if (!$this->containsMultiple($keys)) {
             return false;
@@ -315,9 +311,8 @@ class RedisClient implements Cache
         }
 
         $tags = $this->ns->flatten($tags);
-        $serializedTags = $this->serialize($tags);
         $nsTagsKeys = $this->ns->apply($keys, 'tags');
-        $values = array_combine($nsTagsKeys, array_fill(0, count($nsTagsKeys), $serializedTags));
+        $values = array_combine($nsTagsKeys, array_fill(0, count($nsTagsKeys), json_encode($tags)));
         $this->client->mset($values);
 
         $nsTags = $this->ns->apply($tags, 'tag');
@@ -338,8 +333,8 @@ class RedisClient implements Cache
         }
 
         $nsTagsKeys = $this->ns->apply($keys, 'tags');
-        $serializedTagsList = $this->client->mget($nsTagsKeys);
-        $tagsList = array_map(array($this, 'deserialize'), $serializedTagsList);
+        $tagsList = $this->client->mget($nsTagsKeys);
+        $tagsList = array_map(array($this, 'json_decode'), $tagsList);
         $tags = call_user_func_array('array_merge', $tagsList);
         $tags = array_unique($tags);
 
