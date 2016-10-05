@@ -32,7 +32,7 @@ class NS
      * @param string $value
      * @param array  $config
      */
-    public function __construct($value, array $config = [])
+    public function __construct($value = null, array $config = [])
     {
         $this->value = $value;
         $this->config = $config;
