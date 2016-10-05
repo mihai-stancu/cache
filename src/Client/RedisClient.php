@@ -9,6 +9,7 @@
 
 namespace MS\Cache\Client;
 
+use MS\Cache\Cache;
 use MS\Cache\NS;
 
 class RedisClient implements Cache
@@ -23,8 +24,8 @@ class RedisClient implements Cache
     protected $locks = [];
 
     /**
-     * @param \Redis    $client
-     * @param NS $ns
+     * @param \Redis $client
+     * @param NS     $ns
      */
     public function __construct($client, NS $ns = null)
     {
@@ -33,19 +34,26 @@ class RedisClient implements Cache
         $this->ns = $ns ?: new NS();
     }
 
-    public function beginTransaction()
+    /**
+     * @param bool $buffer
+     */
+    public function beginTransaction($buffer = true)
     {
-        $this->client->multi(\Redis::PIPELINE);
+        $this->client->multi(\Redis::MULTI);
+
+        if ($buffer) {
+            $this->client->multi(\Redis::PIPELINE);
+        }
     }
 
     public function commit()
     {
-        return $this->client->exec();
+        $this->client->exec();
     }
 
     public function rollback()
     {
-        return $this->client->discard();
+        $this->client->discard();
     }
 
     /**
