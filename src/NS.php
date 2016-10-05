@@ -29,10 +29,12 @@ class NS
     );
 
     /**
-     * @param array $config
+     * @param string $value
+     * @param array  $config
      */
-    public function __construct(array $config = [])
+    public function __construct($value, array $config = [])
     {
+        $this->value = $value;
         $this->config = $config;
     }
 

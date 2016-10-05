@@ -23,8 +23,8 @@ class RedisClient implements Cache
     protected $locks = [];
 
     /**
-     * @param \Redis    $client
-     * @param NS $ns
+     * @param \Redis $client
+     * @param NS     $ns
      */
     public function __construct($client, NS $ns = null)
     {
