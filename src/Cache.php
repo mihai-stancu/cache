@@ -12,9 +12,11 @@ namespace MS\Cache;
 interface Cache
 {
     /**
-     * @param bool $buffer
+     * @param string $namespace
+     * @param bool   $transaction
+     * @param bool   $buffer
      */
-    public function beginTransaction($buffer = true);
+    public function beginTransaction($namespace = null, $transaction = null, $buffer = null);
 
     public function commit();
 

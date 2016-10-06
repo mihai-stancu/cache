@@ -9,14 +9,12 @@
 
 namespace MS\Cache;
 
-class NS
+class Namespaces
 {
-    /** @var  string */
-    protected $value;
+    /** @var  array|string[] */
+    protected $values = [];
 
-    /**
-     * @var array
-     */
+    /** @var array */
     protected $config = array(
         'format' => '%1$s.%2$s/%3$s',
 
@@ -34,24 +32,26 @@ class NS
      */
     public function __construct($value = null, array $config = [])
     {
-        $this->value = $value;
-        $this->config = $config;
+        $this->values = is_array($value) ? $value : [$value];
+        $this->config = array_merge($this->config, $config);
+    }
+
+    /**
+     * @param string $value
+     *
+     * @return int
+     */
+    public function use ($value)
+    {
+        return array_push($this->values, $value);
     }
 
     /**
      * @return string
      */
-    public function get()
+    public function end()
     {
-        return $this->value;
-    }
-
-    /**
-     * @param string $value
-     */
-    public function set($value)
-    {
-        $this->value = $value;
+        return array_pop($this->values);
     }
 
     /**
@@ -65,7 +65,9 @@ class NS
         $role = $this->config['roles'][$role];
 
         if (is_string($key)) {
-            return vsprintf($this->config['format'], array($this->value, $role, $key));
+            $value = end($this->values);
+
+            return vsprintf($this->config['format'], array($value, $role, $key));
         }
 
         return array_map(array($this, 'apply'), $key, array_fill(0, count($key), $role));
@@ -82,7 +84,9 @@ class NS
         $role = $this->config['roles'][$role];
 
         if (is_string($key)) {
-            return substr($key, strlen($this->value) + strlen($role) + 2);
+            $value = end($this->values);
+
+            return substr($key, strlen($value) + strlen($role) + 2);
         }
 
         return array_map(array($this, 'remove'), $key, array_fill(0, count($key), $role));
