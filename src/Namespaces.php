@@ -41,7 +41,7 @@ class Namespaces
      *
      * @return int
      */
-    public function use ($value)
+    public function use($value)
     {
         return array_push($this->values, $value);
     }

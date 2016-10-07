@@ -150,13 +150,12 @@ class RedisClient implements Cache
         $nsKey = $this->namespaces->apply($key);
         $serializedValue = $this->serialize($value);
 
-        $this->beginTransaction();
         $options = array('nx', 'px' => $ttl ? intval($ttl * 1000) : null);
         $options = array_filter($options);
-        $this->client->set($nsKey, $serializedValue, $options);
+        $out = $this->client->set($nsKey, $serializedValue, $options);
         $this->tag($key, $tags);
 
-        return $this->commit();
+        return $out;
     }
 
     /**
@@ -174,11 +173,10 @@ class RedisClient implements Cache
         $serializedValues = array_map(array($this, 'serialize'), $values);
         $nsValues = array_combine($nsKeys, $serializedValues);
 
-        $this->beginTransaction();
-        $this->client->msetnx($nsValues);
+        $out = $this->client->msetnx($nsValues);
         $this->tag($keys, $tags);
 
-        return $this->commit();
+        return $out;
     }
 
     /**
@@ -194,14 +192,13 @@ class RedisClient implements Cache
         $nsKey = $this->namespaces->apply($key);
         $serializedValue = $this->serialize($value);
 
-        $this->beginTransaction();
         $options = array('px' => $ttl ? intval($ttl * 1000) : null);
         $options = array_filter($options);
 
-        $this->client->set($nsKey, $serializedValue, $options);
+        $out = $this->client->set($nsKey, $serializedValue, $options);
         $this->tag($key, $tags);
 
-        return $this->commit();
+        return $out;
     }
 
     /**
@@ -219,11 +216,10 @@ class RedisClient implements Cache
         $serializedValues = array_map(array($this, 'serialize'), $values);
         $nsValues = array_combine($nsKeys, $serializedValues);
 
-        $this->beginTransaction();
-        $this->client->mset($nsValues);
+        $out = $this->client->mset($nsValues);
         $this->tag($keys, $tags);
 
-        return $this->commit();
+        return $out;
     }
 
     /**
@@ -239,13 +235,12 @@ class RedisClient implements Cache
         $nsKey = $this->namespaces->apply($key);
         $serializedValue = $this->serialize($value);
 
-        $this->beginTransaction();
         $options = array('xx', 'px' => $ttl ? intval($ttl * 1000) : null);
         $options = array_filter($options);
-        $this->client->set($nsKey, $serializedValue, $options);
+        $out = $this->client->set($nsKey, $serializedValue, $options);
         $this->tag($key, $tags);
 
-        return $this->commit();
+        return $out;
     }
 
     /**
@@ -267,11 +262,10 @@ class RedisClient implements Cache
             return false;
         }
 
-        $this->beginTransaction();
-        $this->client->mset($nsValues);
+        $out = $this->client->mset($nsValues);
         $this->tag($keys, $tags);
 
-        return $this->commit();
+        return $out;
     }
 
     /**
