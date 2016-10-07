@@ -129,7 +129,7 @@ class RedisClient implements Cache
      */
     public function fetchByTags(array $tags = array(), $intersect = true)
     {
-        $tags = $this->flattenTags($tags);
+        $tags = $this->namespaces->flatten($tags);
         $nsTags = $this->namespaces->apply($tags, 'tag');
         $keys = call_user_func_array(array($this->client, $intersect ? 'sInter' : 'sUnion'), $nsTags);
         $values = empty($keys) ? array() : $this->fetchMultiple($keys);
