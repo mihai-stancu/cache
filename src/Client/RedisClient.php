@@ -352,9 +352,15 @@ class RedisClient implements Cache
 
         $nsTagsKeys = $this->namespaces->apply($keys, 'tags');
         $serializedTagsList = $this->client->mget($nsTagsKeys);
+        if (!$serializedTagsList) {
+            return false;
+        }
+
         $tagsList = array_map(array($this, 'deserialize'), $serializedTagsList);
+        $tagsList = array_filter($tagsList);
+
         $tags = call_user_func_array('array_merge', $tagsList);
-        $tags = array_unique($tags);
+        $tags = array_unique((array) $tags);
 
         $nsTags = $this->namespaces->apply($tags, 'tag');
         foreach ($nsTags as $nsTag) {
