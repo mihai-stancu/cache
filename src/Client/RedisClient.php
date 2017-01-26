@@ -358,6 +358,9 @@ class RedisClient implements Cache
 
         $tagsList = array_map(array($this, 'deserialize'), $serializedTagsList);
         $tagsList = array_filter($tagsList);
+        if (count($tagsList) < 2) {
+            return false;
+        }
 
         $tags = call_user_func_array('array_merge', $tagsList);
         $tags = array_unique((array) $tags);
