@@ -63,8 +63,7 @@ class Namespaces
     public function apply($key, $role = 'value')
     {
         $role = $this->config['roles'][$role];
-
-        if (is_string($key)) {
+        if (is_scalar($key)) {
             $value = end($this->values);
 
             return vsprintf($this->config['format'], array($value, $role, $key));
