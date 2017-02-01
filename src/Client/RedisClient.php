@@ -113,6 +113,10 @@ class RedisClient implements Cache
      */
     public function fetchMultiple(array $keys = array())
     {
+        if (empty($keys)) {
+            return [];
+        }
+
         $nsKeys = $this->namespaces->apply($keys);
         $serializedValues = $this->client->mget($nsKeys);
         $values = array_map(array($this, 'deserialize'), $serializedValues);
