@@ -16,7 +16,7 @@ class NS
 
     /** @var array */
     protected $config = [
-        'format' => '%1$s.%2$s/%3$s',
+        'format' => '%1$s:%2$s:%3$s',
 
         'roles' => [
             'lock' => 'lock',
@@ -91,7 +91,7 @@ class NS
         foreach ((array) $input as $key => $value) {
             switch (true) {
                 case is_int($key) and (null === $value or is_scalar($value)):
-                    $prefix = ($base ? $base.':' : '');
+                    $prefix = ($base ? $base.'=' : '');
                     $value = is_string($value) ? $value : var_export($value, true);
                     $output[] = $prefix.$value;
                     break;
@@ -100,12 +100,12 @@ class NS
                     $output = array_merge($output, $this->flatten((array) $value, $prefix));
                     break;
                 case is_string($key) and (null === $value or is_scalar($value)):
-                    $prefix = ($base ? $base.'.'.$key.':' : $key.':');
+                    $prefix = ($base ? $base.':'.$key.'=' : $key.'=');
                     $value = is_string($value) ? $value : var_export($value, true);
                     $output[] = $prefix.$value;
                     break;
                 case is_string($key) and (is_array($value) or is_object($value)):
-                    $prefix = ($base ? $base.'.'.$key : $key);
+                    $prefix = ($base ? $base.':'.$key : $key);
                     $output = array_merge($output, $this->flatten((array) $value, $prefix));
                     break;
             }
