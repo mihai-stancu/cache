@@ -57,14 +57,6 @@ class Lock
     }
 
     /**
-     * @param string $NS
-     */
-    public function changeNS($NS)
-    {
-        $this->ns->use($NS);
-    }
-
-    /**
      * @return bool
      */
     public function check()

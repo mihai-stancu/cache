@@ -13,6 +13,8 @@ use MS\ContainerType\Interfaces\Queue as QueueInterface;
 
 class Queue implements QueueInterface
 {
+    use Serializable;
+
     /** @var \Redis */
     protected $redis;
 
@@ -56,9 +58,14 @@ class Queue implements QueueInterface
     {
         $nsName = $this->ns->apply($this->name);
         $values = array_map([$this, 'serialize'], func_get_args());
-        $args = array_merge([$nsName], $values);
 
-        return call_user_func_array([$this->redis, 'sAdd'], $args);
+        $args = [$nsName, ['NX']];
+        foreach ($values as $value) {
+            $args[] = round(microtime(true) * 1000);
+            $args[] = $value;
+        }
+
+        return call_user_func_array([$this->redis, 'zAdd'], $args);
     }
 
     /**
@@ -69,7 +76,7 @@ class Queue implements QueueInterface
     public function peek($count = 1)
     {
         $nsName = $this->ns->apply($this->name);
-        $values = $this->redis->sRandMember($nsName, $count);
+        $values = $this->redis->zRange($nsName, 0, $count - 1);
         $values = array_map([$this, 'deserialize'], $values);
 
         if (func_num_args() === 0) {
@@ -88,13 +95,8 @@ class Queue implements QueueInterface
     {
         $nsName = $this->ns->apply($this->name);
 
-        $values = [];
-        while ($count-- > 0) {
-            $values[] = $this->redis->sPop($nsName);
-        }
-
-        $values = array_unique($values);
-        $values = array_filter($values);
+        $values = $this->redis->zRange($nsName, 0, $count - 1);
+        $this->redis->zRemRangeByRank($nsName, 0, $count - 1);
         $values = array_map([$this, 'deserialize'], $values);
 
         if (func_num_args() === 0) {
@@ -102,25 +104,5 @@ class Queue implements QueueInterface
         }
 
         return $values;
-    }
-
-    /**
-     * @param mixed $value
-     *
-     * @return string
-     */
-    protected function serialize($value)
-    {
-        return json_encode($value);
-    }
-
-    /**
-     * @param string $value
-     *
-     * @return mixed
-     */
-    protected function deserialize($value)
-    {
-        return json_decode($value, true);
     }
 }

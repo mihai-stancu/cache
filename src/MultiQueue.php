@@ -1,5 +1,12 @@
 <?php
 
+/*
+ * Copyright (c) 2016 Mihai Stancu <stancu.t.mihai@gmail.com>
+ *
+ * This source file is subject to the license that is bundled with this source
+ * code in the LICENSE.md file.
+ */
+
 namespace MS\Cache;
 
 class MultiQueue extends Queue
@@ -8,15 +15,15 @@ class MultiQueue extends Queue
     protected $count = 1;
 
     /**
-     * @param string  $name
-     * @param int     $count
-     * @param \Redis  $redis
-     * @param NS      $ns
+     * @param string $name
+     * @param int    $count
+     * @param \Redis $redis
+     * @param NS     $ns
      */
     public function __construct($name, $count, \Redis $redis, NS $ns = null)
     {
-        $this->name    = $name;
-        $this->count   = $count;
+        $this->name = $name;
+        $this->count = $count;
 
         parent::__construct($name, $redis, $ns);
     }
@@ -30,12 +37,10 @@ class MultiQueue extends Queue
     {
         $valuesPerBin = [];
         foreach (func_get_args() as $value) {
-            $hash = sha1((string)$value);
-            $hash = substr($hash, 0, 4);
+            $hash = sha1((string) $value);
+            $hash = substr($hash, 0, 15);
             $hash = hexdec($hash);
-
             $i = $hash % $this->count;
-
             $valuesPerBin[$i][] = $value;
         }
 
@@ -50,7 +55,6 @@ class MultiQueue extends Queue
         return $count;
     }
 
-
     /**
      * @param int $count
      *
@@ -59,9 +63,9 @@ class MultiQueue extends Queue
     public function peek($count = 1)
     {
         $values = [];
-        $countPerBin = ceil($count/$this->count);
+        $countPerBin = ceil($count / $this->count);
         $name = $this->name;
-        for ($i = 0; $i < $this->count; $i++) {
+        for ($i = 0; $i < $this->count; ++$i) {
             $countPerBin = min($countPerBin, $count - count($values));
             $this->name = $name.'_'.$i;
             $values = array_merge($values, parent::peek($countPerBin));
@@ -79,9 +83,9 @@ class MultiQueue extends Queue
     public function dequeue($count = 1)
     {
         $values = [];
-        $countPerBin = ceil($count/$this->count);
+        $countPerBin = ceil($count / $this->count);
         $name = $this->name;
-        for ($i = 0; $i < $this->count; $i++) {
+        for ($i = 0; $i < $this->count; ++$i) {
             $countPerBin = min($countPerBin, $count - count($values));
             $this->name = $name.'_'.$i;
             $values = array_merge($values, parent::dequeue($countPerBin));

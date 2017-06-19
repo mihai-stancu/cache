@@ -11,6 +11,8 @@ namespace MS\Cache;
 
 class Store
 {
+    use Serializable;
+
     /** @var \Redis */
     protected $redis;
 
@@ -40,18 +42,18 @@ class Store
     }
 
     /**
-     * @param bool $transaction
+     * @param bool $atomic
      * @param bool $buffer
      *
      * @return array
      */
-    public function transaction($transaction = null, $buffer = null)
+    public function transaction($atomic = null, $buffer = null)
     {
         if (isset($buffer) and $buffer) {
             $this->redis->multi(\Redis::PIPELINE);
         }
 
-        if (isset($transaction) and $transaction) {
+        if (isset($atomic) and $atomic) {
             $this->redis->multi(\Redis::MULTI);
         }
     }
@@ -374,25 +376,5 @@ class Store
         }
 
         return $this->redis->del($nsTagsKeys);
-    }
-
-    /**
-     * @param mixed $value
-     *
-     * @return string
-     */
-    protected function serialize($value)
-    {
-        return json_encode($value);
-    }
-
-    /**
-     * @param string $value
-     *
-     * @return mixed
-     */
-    protected function deserialize($value)
-    {
-        return json_decode($value, true);
     }
 }
