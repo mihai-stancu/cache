@@ -11,25 +11,29 @@ namespace MS\Cache;
 
 class Lock
 {
-    /** @var \Redis */
-    protected $redis;
-
-    /** @var NS */
-    protected $ns;
-
     /** @var string */
     protected $name;
 
     /** @var string */
     protected $secret;
 
+    /** @var \Redis */
+    protected $redis;
+
+    /** @var NS */
+    protected $ns;
+
+    /** @var array */
+    protected $options;
+
     /**
      * @param string $name
      * @param string $secret
      * @param \Redis $redis
      * @param NS     $ns
+     * @param array  $options
      */
-    public function __construct($name, $secret, \Redis $redis, NS $ns = null)
+    public function __construct($name, $secret, \Redis $redis, NS $ns = null, array $options = [])
     {
         if ($secret === null) {
             $secret = openssl_random_pseudo_bytes(32);
@@ -42,6 +46,7 @@ class Lock
 
         $this->redis = $redis;
         $this->ns = $ns;
+        $this->options = $options;
     }
 
     /**

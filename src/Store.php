@@ -19,14 +19,19 @@ class Store
     /** @var NS */
     protected $ns;
 
+    /** @var array */
+    protected $options;
+
     /**
      * @param \Redis $redis
      * @param NS     $ns
+     * @param array  $options
      */
-    public function __construct(\Redis $redis, NS $ns = null)
+    public function __construct(\Redis $redis, NS $ns = null, array $options = [])
     {
         $this->redis = $redis;
         $this->ns = $ns ?: new NS();
+        $this->options = $options;
     }
 
     /**

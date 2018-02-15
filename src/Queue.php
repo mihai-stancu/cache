@@ -15,26 +15,31 @@ class Queue implements QueueInterface
 {
     use Serializable;
 
+    /** @var string */
+    protected $name;
+
     /** @var \Redis */
     protected $redis;
 
     /** @var NS */
     protected $ns;
 
-    /** @var string */
-    protected $name;
+    /** @var array */
+    protected $options;
 
     /**
      * @param string $name
      * @param \Redis $redis
      * @param NS     $ns
+     * @param array  $options
      */
-    public function __construct($name, \Redis $redis, NS $ns = null)
+    public function __construct($name, \Redis $redis, NS $ns = null, array $options = [])
     {
         $this->name = $name;
 
         $this->redis = $redis;
         $this->ns = $ns ?: new NS();
+        $this->options = $options;
     }
 
     /**

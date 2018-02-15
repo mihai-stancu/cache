@@ -17,6 +17,9 @@ class Factory
     /** @var NS */
     protected $ns;
 
+    /** @var array */
+    protected $options;
+
     /** @var Lock[] */
     protected $locks = [];
 
@@ -29,11 +32,13 @@ class Factory
     /**
      * @param \Redis $redis
      * @param NS     $ns
+     * @param array  $options
      */
-    public function __construct(\Redis $redis, NS $ns = null)
+    public function __construct(\Redis $redis, NS $ns = null, array $options = [])
     {
         $this->redis = $redis;
         $this->ns = $ns ?: new NS();
+        $this->options = $options;
     }
 
     /**
@@ -48,7 +53,7 @@ class Factory
             return $this->locks[$name];
         }
 
-        return $this->locks[$name] = new Lock($name, $secret, $this->redis, $this->ns);
+        return $this->locks[$name] = new Lock($name, $secret, $this->redis, $this->ns, $this->options);
     }
 
     /**
@@ -64,10 +69,10 @@ class Factory
         }
 
         if ($multi === 0) {
-            return $this->queues[$name] = new Queue($name, $this->redis, $this->ns);
+            return $this->queues[$name] = new Queue($name, $this->redis, $this->ns, $this->options);
         }
 
-        return $this->queues[$name] = new MultiQueue($name, $multi, $this->redis, $this->ns);
+        return $this->queues[$name] = new MultiQueue($name, $multi, $this->redis, $this->ns, $this->options);
     }
 
     /**
@@ -79,6 +84,6 @@ class Factory
             return $this->store;
         }
 
-        return $this->store = new Store($this->redis, $this->ns);
+        return $this->store = new Store($this->redis, $this->ns, $this->options);
     }
 }

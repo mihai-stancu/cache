@@ -18,7 +18,10 @@ trait Serializable
      */
     protected function serialize($value)
     {
-        return json_encode($value);
+        $serializer = $this->options['serializer'];
+        $arguments = array_merge([$value], $this->options['serializer_arguments'] ?? []);
+
+        return call_user_func_array($serializer, $arguments);
     }
 
     /**
@@ -28,6 +31,10 @@ trait Serializable
      */
     protected function deserialize($value)
     {
-        return json_decode($value, true);
+
+        $deserializer = $this->options['deserializer'];
+        $arguments = array_merge([$value], $this->options['deserializer_arguments'] ?? []);
+
+        return call_user_func_array($deserializer, $arguments);
     }
 }
