@@ -214,6 +214,7 @@ class Store
      */
     public function saveMultiple($values, $ttl = null, array $tags = [])
     {
+        $values = (array) $values;
         $keys = array_keys($values);
         $nsKeys = $this->ns->apply($keys);
 
