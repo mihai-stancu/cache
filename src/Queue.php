@@ -11,47 +11,32 @@ namespace MS\Cache;
 
 use MS\ContainerType\Interfaces\Queue as QueueInterface;
 
-class Queue implements QueueInterface
+final class Queue implements QueueInterface
 {
     use Serializable;
 
     /** @var string */
-    protected $name;
+    private $name;
+
 
     /** @var \Redis */
-    protected $redis;
-
-    /** @var NS */
-    protected $ns;
+    private $redis;
 
     /** @var array */
-    protected $options;
+    private $options;
+
 
     /**
      * @param string $name
      * @param \Redis $redis
-     * @param NS     $ns
      * @param array  $options
      */
-    public function __construct($name, \Redis $redis, NS $ns = null, array $options = [])
+    public function __construct($name, \Redis $redis, array $options = [])
     {
         $this->name = $name;
 
         $this->redis = $redis;
-        $this->ns = $ns ?: new NS();
         $this->options = $options;
-    }
-
-    /**
-     * @param string $ns
-     *
-     * @return static
-     */
-    public function changeNS($ns)
-    {
-        $this->ns->use($ns);
-
-        return $this;
     }
 
     /**
@@ -59,18 +44,16 @@ class Queue implements QueueInterface
      *
      * @return bool
      */
-    public function enqueue($values)
+    public function enqueue(...$values)
     {
-        $nsName = $this->ns->apply($this->name);
-        $values = array_map([$this, 'serialize'], func_get_args());
-
-        $args = [$nsName, ['NX']];
+        $values = array_map([$this, 'serialize'], $values);
+        $args = [$this->name, ['NX']];
         foreach ($values as $value) {
             $args[] = round(microtime(true) * 1000);
             $args[] = $value;
         }
 
-        return call_user_func_array([$this->redis, 'zAdd'], $args);
+        return \call_user_func_array([$this->redis, 'zAdd'], $args);
     }
 
     /**
@@ -80,8 +63,7 @@ class Queue implements QueueInterface
      */
     public function peek($count = 1)
     {
-        $nsName = $this->ns->apply($this->name);
-        $values = $this->redis->zRange($nsName, 0, $count - 1);
+        $values = $this->redis->zRange($this->name, 0, $count - 1);
         $values = array_map([$this, 'deserialize'], $values);
 
         if (func_num_args() === 0) {
@@ -98,10 +80,8 @@ class Queue implements QueueInterface
      */
     public function dequeue($count = 1)
     {
-        $nsName = $this->ns->apply($this->name);
-
-        $values = $this->redis->zRange($nsName, 0, $count - 1);
-        $this->redis->zRemRangeByRank($nsName, 0, $count - 1);
+        $values = $this->redis->zRange($this->name, 0, $count - 1);
+        $this->redis->zRemRangeByRank($this->name, 0, $count - 1);
         $values = array_map([$this, 'deserialize'], $values);
 
         if (func_num_args() === 0) {

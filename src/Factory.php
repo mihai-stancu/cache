@@ -9,81 +9,73 @@
 
 namespace MS\Cache;
 
-class Factory
+final class Factory
 {
     /** @var \Redis */
-    protected $redis;
-
-    /** @var NS */
-    protected $ns;
+    private $redis;
 
     /** @var array */
-    protected $options;
+    private $options;
+
 
     /** @var Lock[] */
-    protected $locks = [];
+    private $locks = [];
 
     /** @var Queue[] */
-    protected $queues = [];
+    private $queues = [];
 
-    /** @var Store */
-    protected $store;
+    /** @var Exchange[] */
+    private $exchanges = [];
 
-    /**
-     * @param \Redis $redis
-     * @param NS     $ns
-     * @param array  $options
-     */
-    public function __construct(\Redis $redis, NS $ns = null, array $options = [])
+    /** @var Store[] */
+    private $stores = [];
+
+
+    public function __construct(\Redis $redis, array $options = [])
     {
         $this->redis = $redis;
-        $this->ns = $ns ?: new NS();
         $this->options = $options;
     }
 
-    /**
-     * @param string $name
-     * @param string $secret
-     *
-     * @return Lock
-     */
-    public function lock($name, $secret = null)
+    public function lock(string $ns, string $name, $secret = null): Lock
     {
         if (isset($this->locks[$name])) {
             return $this->locks[$name];
         }
 
-        return $this->locks[$name] = new Lock($name, $secret, $this->redis, $this->ns, $this->options);
+        $name = (new NS($ns))->apply($name, 'lock');
+
+        return $this->locks[$name] = new Lock($name, $secret, $this->redis);
     }
 
-    /**
-     * @param string $name
-     * @param int    $multi
-     *
-     * @return Queue
-     */
-    public function queue($name, $multi = 0)
+    public function queue(string $ns, string $name): Queue
     {
         if (isset($this->queues[$name])) {
             return $this->queues[$name];
         }
 
-        if ($multi === 0) {
-            return $this->queues[$name] = new Queue($name, $this->redis, $this->ns, $this->options);
-        }
+        $name = (new NS($ns))->apply($name, 'queue');
 
-        return $this->queues[$name] = new MultiQueue($name, $multi, $this->redis, $this->ns, $this->options);
+        return $this->queues[$name] = new Queue($name, $this->redis, $this->options);
     }
 
-    /**
-     * @return Store
-     */
-    public function store()
+    public function exchange(string $ns, string $name, string $type, array $args = []): Exchange
     {
-        if (isset($this->store)) {
-            return $this->store;
+        if (isset($this->exchanges[$name])) {
+            return $this->exchanges[$name];
         }
 
-        return $this->store = new Store($this->redis, $this->ns, $this->options);
+        $name = (new NS($ns))->apply($name, 'exchange');
+
+        return $this->exchanges[$name] = new Exchange($name, $type, $args, $this);
+    }
+
+    public function store(string $ns): Store
+    {
+        if (isset($this->stores[$ns])) {
+            return $this->stores[$ns];
+        }
+
+        return $this->stores[$ns] = new Store(new NS($ns), $this->redis, $this->options);
     }
 }

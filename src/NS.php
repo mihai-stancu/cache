@@ -9,74 +9,36 @@
 
 namespace MS\Cache;
 
-class NS
+/**
+ * @internal
+ */
+final class NS
 {
     /** @var string */
-    protected $value;
+    private $value;
 
-    /** @var array */
-    protected $config = [
-        'format' => '%1$s:%2$s:%3$s',
+    /** @var string */
+    private $format = '%1$s:%2$s:%3$s';
 
-        'roles' => [
-            'lock' => 'lock',
-            'tag' => 'tag',
-            'tags' => 'tags',
-            'value' => 'value',
-        ],
-    ];
 
-    /**
-     * @param string $value
-     * @param array  $config
-     */
-    public function __construct($value = null, array $config = [])
-    {
-        $this->value = $value;
-        $this->config = array_merge($this->config, $config);
-    }
-
-    /**
-     * @param string $value
-     *
-     * @return int
-     */
-    public function use($value)
+    public function __construct(string $value)
     {
         $this->value = $value;
     }
 
-    /**
-     * @param string|string[] $key
-     * @param string          $role
-     *
-     * @return string|string[]
-     */
-    public function apply($key, $role = 'value')
+    public function apply(string $key, string $role = 'value'): string
     {
-        $role = $this->config['roles'][$role];
-        if (is_scalar($key)) {
-            return vsprintf($this->config['format'], [$this->value, $role, $key]);
-        }
-
-        return array_map([$this, 'apply'], $key, array_fill(0, count($key), $role));
+        return \sprintf($this->format, $this->value, $role, $key);
     }
 
-    /**
-     * @param string|string[] $key
-     * @param string          $role
-     *
-     * @return string|string[]
-     */
-    public function remove($key, $role = null)
+    public function batchApply(array $keys, string $role = 'value'): array
     {
-        $role = $this->config['roles'][$role];
-
-        if (is_string($key)) {
-            return substr($key, strlen($this->value) + strlen($role) + 2);
+        $nsKeys = [];
+        foreach ($keys as $key) {
+            $nsKeys[] = $this->apply($key, $role);
         }
 
-        return array_map([$this, 'remove'], $key, array_fill(0, count($key), $role));
+        return $nsKeys;
     }
 
     /**

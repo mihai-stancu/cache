@@ -9,68 +9,29 @@
 
 namespace MS\Cache;
 
-class Store
+final class Store
 {
     use Serializable;
 
     /** @var \Redis */
-    protected $redis;
+    private $redis;
 
     /** @var NS */
-    protected $ns;
+    private $ns;
 
     /** @var array */
-    protected $options;
+    private $options;
 
     /**
-     * @param \Redis $redis
      * @param NS     $ns
+     * @param \Redis $redis
      * @param array  $options
      */
-    public function __construct(\Redis $redis, NS $ns = null, array $options = [])
+    public function __construct(NS $ns, \Redis $redis, array $options = [])
     {
+        $this->ns = $ns;
         $this->redis = $redis;
-        $this->ns = $ns ?: new NS();
         $this->options = $options;
-    }
-
-    /**
-     * @param string $ns
-     *
-     * @return static
-     */
-    public function changeNS($ns)
-    {
-        $this->ns->use($ns);
-
-        return $this;
-    }
-
-    /**
-     * @param bool $atomic
-     * @param bool $buffer
-     *
-     * @return array
-     */
-    public function transaction($atomic = null, $buffer = null)
-    {
-        if (isset($buffer) and $buffer) {
-            $this->redis->multi(\Redis::PIPELINE);
-        }
-
-        if (isset($atomic) and $atomic) {
-            $this->redis->multi(\Redis::MULTI);
-        }
-    }
-
-    public function commit()
-    {
-        return $this->redis->exec();
-    }
-
-    public function rollback()
-    {
-        return $this->redis->discard();
     }
 
     /**
@@ -92,9 +53,10 @@ class Store
      */
     public function containsMultiple($keys)
     {
-        $nsKeys = $this->ns->apply($keys);
+        $nsKeys = $this->ns->batchApply($keys);
+        $results = array_map([$this->redis, 'exists'], ...$nsKeys);
 
-        return count($keys) === $this->redis->exists($nsKeys);
+        return \count($keys) === \array_sum($results);
     }
 
     /**
@@ -118,11 +80,7 @@ class Store
      */
     public function fetchMultiple(array $keys = [])
     {
-        if (empty($keys)) {
-            return [];
-        }
-
-        $nsKeys = $this->ns->apply($keys);
+        $nsKeys = $this->ns->batchApply($keys);
         $values = $this->redis->mget($nsKeys);
         $values = array_map([$this, 'deserialize'], $values);
         $values = array_combine($keys, $values);
@@ -132,15 +90,14 @@ class Store
 
     /**
      * @param array|string[] $tags
-     * @param bool           $intersect
      *
      * @return array|mixed[]
      */
-    public function fetchByTags(array $tags = [], $intersect = true)
+    public function fetchByTags(array $tags = [])
     {
         $tags = $this->ns->flatten($tags);
-        $nsTags = $this->ns->apply($tags, 'tag');
-        $keys = call_user_func_array([$this->redis, $intersect ? 'sInter' : 'sUnion'], $nsTags);
+        $nsTags = $this->ns->batchApply($tags, 'tag');
+        $keys = $this->redis->sInter(...$nsTags);
         $values = empty($keys) ? [] : $this->fetchMultiple($keys);
 
         return (array) $values;
@@ -162,7 +119,7 @@ class Store
         $options = ['nx', 'px' => $ttl ? (int) ($ttl * 1000) : null];
         $options = array_filter($options);
         $out = $this->redis->set($nsKey, $value, $options);
-        $this->tag($key, $tags);
+        $this->tag([$key], $tags);
 
         return $out;
     }
@@ -177,7 +134,7 @@ class Store
     public function addMultiple($values, $ttl = null, array $tags = [])
     {
         $keys = array_keys($values);
-        $nsKeys = $this->ns->apply($keys);
+        $nsKeys = $this->ns->batchApply($keys);
 
         $values = array_map([$this, 'serialize'], $values);
         $nsValues = array_combine($nsKeys, $values);
@@ -205,7 +162,7 @@ class Store
         $options = array_filter($options);
 
         $out = $this->redis->set($nsKey, $value, $options);
-        $this->tag($key, $tags);
+        $this->tag([$key], $tags);
 
         return $out;
     }
@@ -221,7 +178,7 @@ class Store
     {
         $values = (array) $values;
         $keys = array_keys($values);
-        $nsKeys = $this->ns->apply($keys);
+        $nsKeys = $this->ns->batchApply($keys);
 
         $values = array_map([$this, 'serialize'], $values);
         $nsValues = array_combine($nsKeys, $values);
@@ -248,7 +205,7 @@ class Store
         $options = ['xx', 'px' => $ttl ? (int) ($ttl * 1000) : null];
         $options = array_filter($options);
         $out = $this->redis->set($nsKey, $value, $options);
-        $this->tag($key, $tags);
+        $this->tag([$key], $tags);
 
         return $out;
     }
@@ -263,7 +220,7 @@ class Store
     public function replaceMultiple($values, $ttl = null, array $tags = [])
     {
         $keys = array_keys($values);
-        $nsKeys = $this->ns->apply($keys);
+        $nsKeys = $this->ns->batchApply($keys);
 
         $values = array_map([$this, 'serialize'], $values);
         $nsValues = array_combine($nsKeys, $values);
@@ -285,7 +242,7 @@ class Store
      */
     public function delete($key)
     {
-        $this->untag($key);
+        $this->untag([$key]);
 
         $nsKey = $this->ns->apply($key);
 
@@ -301,86 +258,56 @@ class Store
     {
         $this->untag($keys);
 
-        $nsKeys = $this->ns->apply($keys);
+        $nsKeys = $this->ns->batchApply($keys);
 
-        return count($keys) === $this->redis->del($nsKeys);
+        return \count($keys) === $this->redis->del($nsKeys);
     }
 
-    /**
-     * @param array|string[] $tags
-     * @param bool           $intersect
-     *
-     * @return bool
-     */
-    public function deleteByTags(array $tags = [], $intersect = true)
+    public function deleteByTags(array $tags = []): bool
     {
         $tags = $this->ns->flatten($tags);
-        $nsTags = $this->ns->apply($tags, 'tag');
-        $keys = call_user_func_array([$this->redis, $intersect ? 'sInter' : 'sUnion'], $nsTags);
+        $nsTags = $this->ns->batchApply($tags, 'tag');
+        $keys = $this->redis->sInter(...$nsTags);
 
         return empty($keys) ? true : $this->deleteMultiple($keys);
     }
 
-    /**
-     * @param string         $keys
-     * @param array|string[] $tags
-     *
-     * @return bool
-     */
-    public function tag($keys, array $tags = [])
+    private function tag(array $keys, array $tags = [])
     {
-        if (empty($tags)) {
-            return true;
-        }
-
-        if (!is_array($keys)) {
-            $keys = [$keys];
-        }
-
         $tags = $this->ns->flatten($tags);
         $serializedTags = $this->serialize($tags);
-        $nsTagsKeys = $this->ns->apply($keys, 'tags');
-        $values = array_combine($nsTagsKeys, array_fill(0, count($nsTagsKeys), $serializedTags));
+        $nsTagsKeys = $this->ns->batchApply($keys, 'tags');
+        $values = array_combine($nsTagsKeys, array_fill(0, \count($nsTagsKeys), $serializedTags));
         $this->redis->mset($values);
 
-        $nsTags = $this->ns->apply($tags, 'tag');
+        $nsTags = $this->ns->batchApply($tags, 'tag');
         foreach ($nsTags as $nsTag) {
-            call_user_func_array([$this->redis, 'sAdd'], array_merge([$nsTag], $keys));
+            $this->redis->sAdd($nsTag, ...$keys);
         }
     }
 
-    /**
-     * @param string $keys
-     *
-     * @return bool
-     */
-    public function untag($keys)
+    private function untag(array $keys = [])
     {
-        if (!is_array($keys)) {
-            $keys = [$keys];
-        }
-
-        $nsTagsKeys = $this->ns->apply($keys, 'tags');
+        $nsTagsKeys = $this->ns->batchApply($keys, 'tags');
         $serializedTagsList = $this->redis->mget($nsTagsKeys);
         if (!$serializedTagsList) {
-            return false;
+            return;
         }
 
         $tagsList = array_map([$this, 'deserialize'], $serializedTagsList);
         $tagsList = array_filter($tagsList);
-        if (count($tagsList) < 2) {
-            return false;
+        if (\count($tagsList) < 2) {
+            return;
         }
 
-        $tags = call_user_func_array('array_merge', $tagsList);
-        $tags = array_unique((array) $tags);
+        $tags = array_merge(...$tagsList);
+        $tags = array_unique($tags);
 
-        $nsTags = $this->ns->apply($tags, 'tag');
+        $nsTags = $this->ns->batchApply($tags, 'tag');
         foreach ($nsTags as $nsTag) {
-            $this->redis->sRem($nsTag, $keys);
-            call_user_func_array([$this->redis, 'sRem'], array_merge([$nsTag], $keys));
+            $this->redis->sRem($nsTag, ...$keys);
         }
 
-        return $this->redis->del($nsTagsKeys);
+        return $this->redis->del(...$nsTagsKeys);
     }
 }
