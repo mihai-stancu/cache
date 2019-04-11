@@ -59,13 +59,17 @@ class Factory
     /**
      * @param string $name
      * @param int    $multi
-     *
+     * @param string $type
      * @return Queue
      */
-    public function queue($name, $multi = 0)
+    public function queue($name, $multi = 0, $type = 'simple')
     {
         if (isset($this->queues[$name])) {
             return $this->queues[$name];
+        }
+
+        if ($type === 'scoreboard') {
+            return $this->queues[$name] = new ScoreboardQueue($name, $this->redis, $this->ns, $this->options);
         }
 
         if ($multi === 0) {
