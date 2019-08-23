@@ -17,7 +17,7 @@ class Lock
     /** @var string */
     protected $secret;
 
-    /** @var \Redis */
+    /** @var \Redis|\RedisCluster */
     protected $redis;
 
     /** @var NS */
@@ -29,11 +29,11 @@ class Lock
     /**
      * @param string $name
      * @param string $secret
-     * @param \Redis $redis
+     * @param \Redis|\RedisCluster $redis
      * @param NS     $ns
      * @param array  $options
      */
-    public function __construct($name, $secret, \Redis $redis, NS $ns = null, array $options = [])
+    public function __construct($name, $secret, $redis, NS $ns = null, array $options = [])
     {
         if ($secret === null) {
             $secret = openssl_random_pseudo_bytes(32);

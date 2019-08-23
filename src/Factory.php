@@ -11,7 +11,7 @@ namespace MS\Cache;
 
 class Factory
 {
-    /** @var \Redis */
+    /** @var \Redis|\RedisCluster */
     protected $redis;
 
     /** @var NS */
@@ -30,11 +30,11 @@ class Factory
     protected $store;
 
     /**
-     * @param \Redis $redis
+     * @param \Redis|\RedisCluster $redis
      * @param NS     $ns
      * @param array  $options
      */
-    public function __construct(\Redis $redis, NS $ns = null, array $options = [])
+    public function __construct($redis, NS $ns = null, array $options = [])
     {
         $this->redis = $redis;
         $this->ns = $ns ?: new NS();

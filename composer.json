@@ -11,14 +11,20 @@
         {
             "name": "Mihai Stancu",
             "email": "stancu.t.mihai@gmail.com"
+        },
+        {
+            "name": "Razvan Ghinea",
+            "email": "ghinea.ion.razvan@gmail.com"
         }
     ],
 
     "require": {
-        "php": ">=5.4",
-        "ext-redis": ">=2.2"
+        "php": ">=7.0",
+        "ext-redis": ">=2.2",
+        "mihai-stancu/container-type": "^0.1.5"
     },
     "require-dev": {
+        "phpunit/phpunit": "^7"
     },
 
     "autoload": {

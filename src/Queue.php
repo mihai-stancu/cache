@@ -18,7 +18,7 @@ class Queue implements QueueInterface
     /** @var string */
     protected $name;
 
-    /** @var \Redis */
+    /** @var \Redis|\RedisCluster */
     protected $redis;
 
     /** @var NS */
@@ -29,11 +29,11 @@ class Queue implements QueueInterface
 
     /**
      * @param string $name
-     * @param \Redis $redis
+     * @param \Redis|\RedisCluster $redis
      * @param NS     $ns
      * @param array  $options
      */
-    public function __construct($name, \Redis $redis, NS $ns = null, array $options = [])
+    public function __construct($name, $redis, NS $ns = null, array $options = [])
     {
         $this->name = $name;
 

@@ -17,11 +17,11 @@ class MultiQueue extends Queue
     /**
      * @param string $name
      * @param int    $count
-     * @param \Redis $redis
+     * @param \Redis|\RedisCluster $redis
      * @param NS     $ns
      * @param array  $options
      */
-    public function __construct($name, $count, \Redis $redis, NS $ns = null, array $options = [])
+    public function __construct($name, $count, $redis, NS $ns = null, array $options = [])
     {
         $this->name = $name;
         $this->count = $count;
